@@ -2,6 +2,7 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -21,6 +22,7 @@ public:
         declare_parameter("max_tracking_distance", 10.0);  // 太远不追
         declare_parameter("goal_update_interval", 1.0);    // 目标更新最小间隔(秒)
         declare_parameter("goal_offset", 0.3);             // 目标点距离敌人的偏移(不要撞上去)
+        declare_parameter("enable_navigation", true);      // 是否启用导航(调试时可关闭)
 
         // 获取参数
         gimbal_frame_ = get_parameter("gimbal_frame").as_string();
@@ -29,6 +31,7 @@ public:
         max_distance_ = get_parameter("max_tracking_distance").as_double();
         goal_update_interval_ = get_parameter("goal_update_interval").as_double();
         goal_offset_ = get_parameter("goal_offset").as_double();
+        enable_navigation_ = get_parameter("enable_navigation").as_bool();
 
         // TF2
         tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
@@ -36,6 +39,9 @@ public:
 
         // Action客户端
         nav_client_ = rclcpp_action::create_client<NavigateToPose>(this, "navigate_to_pose");
+
+        // 可视化发布器
+        marker_pub_ = create_publisher<visualization_msgs::msg::Marker>("/enemy_goal_marker", 10);
 
         // 订阅敌人距离
         enemy_sub_ = create_subscription<std_msgs::msg::Float32>(
@@ -80,9 +86,33 @@ private:
             return;
         }
 
+        // 发布可视化
+        publishMarker(enemy_pose_map);
+
         // 发送导航目标
-        sendNavigationGoal(enemy_pose_map);
+        if (enable_navigation_) {
+            sendNavigationGoal(enemy_pose_map);
+        }
         last_goal_time_ = now;
+    }
+
+    void publishMarker(const geometry_msgs::msg::PoseStamped& pose) {
+        visualization_msgs::msg::Marker marker;
+        marker.header = pose.header;
+        marker.ns = "enemy_goal";
+        marker.id = 0;
+        marker.type = visualization_msgs::msg::Marker::SPHERE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.pose = pose.pose;
+        marker.scale.x = 0.3;
+        marker.scale.y = 0.3;
+        marker.scale.z = 0.3;
+        marker.color.r = 1.0;
+        marker.color.g = 0.0;
+        marker.color.b = 0.0;
+        marker.color.a = 0.8;
+        marker.lifetime = rclcpp::Duration::from_seconds(2.0);
+        marker_pub_->publish(marker);
     }
 
     void sendNavigationGoal(const geometry_msgs::msg::PoseStamped& goal_pose) {
@@ -114,6 +144,7 @@ private:
     double max_distance_;
     double goal_update_interval_;
     double goal_offset_;
+    bool enable_navigation_;
 
     // TF2
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -124,6 +155,9 @@ private:
 
     // 订阅者
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr enemy_sub_;
+
+    // 发布者
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_;
 
     // 状态
     rclcpp::Time last_goal_time_{0, 0, RCL_ROS_TIME};

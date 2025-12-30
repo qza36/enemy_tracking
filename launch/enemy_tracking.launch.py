@@ -6,13 +6,14 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('gimbal_frame', default_value='gimbal'),
+        DeclareLaunchArgument('gimbal_frame', default_value='base_link'),
         DeclareLaunchArgument('map_frame', default_value='map'),
         DeclareLaunchArgument('enemy_distance_topic', default_value='/enemy_distance'),
         DeclareLaunchArgument('min_tracking_distance', default_value='0.5'),
         DeclareLaunchArgument('max_tracking_distance', default_value='10.0'),
         DeclareLaunchArgument('goal_update_interval', default_value='1.0'),
         DeclareLaunchArgument('goal_offset', default_value='0.3'),
+        DeclareLaunchArgument('enable_navigation', default_value='true'),
 
         Node(
             package='enemy_tracking',
@@ -26,6 +27,7 @@ def generate_launch_description():
                 'max_tracking_distance': LaunchConfiguration('max_tracking_distance'),
                 'goal_update_interval': LaunchConfiguration('goal_update_interval'),
                 'goal_offset': LaunchConfiguration('goal_offset'),
+                'enable_navigation': LaunchConfiguration('enable_navigation'),
             }],
             output='screen',
         ),
