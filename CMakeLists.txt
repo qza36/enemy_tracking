@@ -10,8 +10,10 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav2_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(rm_interfaces REQUIRED)
 
 add_executable(enemy_tracking_node src/enemy_tracking_node.cpp)
 ament_target_dependencies(enemy_tracking_node
@@ -21,8 +23,10 @@ ament_target_dependencies(enemy_tracking_node
   tf2_ros
   tf2_geometry_msgs
   nav2_msgs
+  nav_msgs
   rclcpp_action
   visualization_msgs
+  rm_interfaces
 )
 
 install(TARGETS enemy_tracking_node
