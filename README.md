@@ -34,7 +34,7 @@ RoboMaster 哨兵机器人敌人追踪导航功能包，基于视觉追踪结果
 
 ```bash
 cd ~/ros_ws/src
-git clone https://github.com/your-repo/enemy_tracking.git
+git clone https://github.com/qza36/enemy_tracking.git
 ```
 
 ```bash
