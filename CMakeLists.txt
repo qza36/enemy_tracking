@@ -14,6 +14,7 @@ find_package(nav_msgs REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(rm_interfaces REQUIRED)
+find_package(nav2_util REQUIRED)
 
 add_executable(enemy_tracking_node src/enemy_tracking_node.cpp)
 ament_target_dependencies(enemy_tracking_node
@@ -27,6 +28,7 @@ ament_target_dependencies(enemy_tracking_node
   rclcpp_action
   visualization_msgs
   rm_interfaces
+    nav2_util
 )
 
 install(TARGETS enemy_tracking_node
