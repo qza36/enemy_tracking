@@ -19,8 +19,6 @@ using PointStamped = geometry_msgs::msg::PointStamped;
 using Point = geometry_msgs::msg::Point;
 using PoseStamped = geometry_msgs::msg::PoseStamped;
 
-namespace sentry_behavior
-{
 
 class CalculateAttackPoseAction : public BT::RosTopicPubNode<visualization_msgs::msg::MarkerArray>
 {
@@ -70,7 +68,5 @@ private:
 
   PointStamped enemy_on_costmap_;
 };
-
-}  // namespace sentry_behavior
 
 #endif  // ACTION__CALCULATE_ATTACK_POSE_HPP_

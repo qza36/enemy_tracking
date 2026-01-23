@@ -4,10 +4,12 @@
 #include "nav2_util/robot_utils.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "visualization_msgs/msg/marker.hpp"
+#include "behaviortree_ros2/bt_topic_sub_node.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include <mutex>
+#include <rclcpp/rclcpp.hpp>
 
 using nav2_util::declare_parameter_if_not_declared;
-namespace sentry_behavior
-{
 
 CalculateAttackPoseAction::CalculateAttackPoseAction(
   const std::string & name, const BT::NodeConfig & config, const BT::RosNodeParams & params)
@@ -16,11 +18,11 @@ CalculateAttackPoseAction::CalculateAttackPoseAction(
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-  declare_parameter_if_not_declared(node_, name + ".attack_radius", rclcpp::ParameterValue(3.0));
+  declare_parameter_if_not_declared(node_, name + ".attack_radius", rclcpp::ParameterValue(0.2));
   declare_parameter_if_not_declared(node_, name + ".num_sectors", rclcpp::ParameterValue(36));
-  declare_parameter_if_not_declared(node_, name + ".cost_threshold", rclcpp::ParameterValue(50));
+  declare_parameter_if_not_declared(node_, name + ".cost_threshold", rclcpp::ParameterValue(500));
   declare_parameter_if_not_declared(
-    node_, name + ".robot_base_frame", rclcpp::ParameterValue("chassis"));
+    node_, name + ".robot_base_frame", rclcpp::ParameterValue("base_link"));
   declare_parameter_if_not_declared(
     node_, name + ".transform_tolerance", rclcpp::ParameterValue(0.5));
   declare_parameter_if_not_declared(
@@ -323,7 +325,62 @@ void CalculateAttackPoseAction::createVisualizationMarkers(
   msg.markers.push_back(circle);
 }
 
-}  // namespace sentry_behavior
+int main(int argc, char* argv[]) {
+  rclcpp::init(argc, argv);
 
-#include "behaviortree_ros2/plugins.hpp"
-CreateRosNodePlugin(sentry_behavior::CalculateAttackPoseAction, "CalculateAttackPose");
+  auto nh = std::make_shared<rclcpp::Node>("enemy_tracking_node");
+
+  const auto costmap_topic = nh->declare_parameter<std::string>(
+    "costmap_topic", "/global_costmap/costmap");
+  const auto target_topic = nh->declare_parameter<std::string>(
+    "target_topic", "armor_solver/target");
+
+  std::mutex data_mutex;
+  nav_msgs::msg::OccupancyGrid::SharedPtr latest_costmap;
+  rm_interfaces::msg::Target::SharedPtr latest_target;
+
+  auto costmap_sub = nh->create_subscription<nav_msgs::msg::OccupancyGrid>(
+    costmap_topic, rclcpp::QoS(1).reliable().transient_local(),
+    [&](nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+      std::lock_guard<std::mutex> lock(data_mutex);
+      latest_costmap = msg;
+    });
+
+  auto target_sub = nh->create_subscription<rm_interfaces::msg::Target>(
+    target_topic, rclcpp::QoS(10).best_effort(),
+    [&](rm_interfaces::msg::Target::SharedPtr msg) {
+      std::lock_guard<std::mutex> lock(data_mutex);
+      latest_target = msg;
+    });
+
+  BT::RosNodeParams params;
+  params.nh = nh;
+  params.default_port_value = "goal";
+
+  BT::BehaviorTreeFactory factory;
+
+  factory.registerNodeType<CalculateAttackPoseAction>("CalculateAttackPose", params);
+
+  auto tree = factory.createTreeFromFile(
+    "/home/arlo/CLionProjects/enemy_tracking_ws/src/enemy_tracking/main.xml");
+  auto blackboard = tree.rootBlackboard();
+
+  while(rclcpp::ok()) {
+    {
+      std::lock_guard<std::mutex> lock(data_mutex);
+      if (latest_costmap) {
+        blackboard->set("nav_globalCostmap", *latest_costmap);
+      }
+      if (latest_target) {
+        blackboard->set("tracker_target", *latest_target);
+      }
+    }
+    tree.tickOnce();
+    rclcpp::spin_some(nh);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  rclcpp::shutdown();
+  return 0;
+}
+
