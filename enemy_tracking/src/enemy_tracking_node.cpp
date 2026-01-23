@@ -44,7 +44,7 @@ BT::PortsList CalculateAttackPoseAction::providedPorts()
   return providedBasicPorts({
     BT::InputPort<nav_msgs::msg::OccupancyGrid>(
       "costmap_port", "{@nav_globalCostmap}", "GlobalCostmap port on blackboard"),
-    BT::InputPort<auto_aim_interfaces::msg::Target>(
+    BT::InputPort<rm_interfaces::msg::Target>(
       "tracker_port", "{@tracker_target}", "Vision target port on blackboard"),
     BT::OutputPort<PoseStamped>(
       "goal", "{attack_pose}", "Expected goal pose that send to nav2. Fill with format `x;y;yaw`"),
@@ -54,7 +54,7 @@ BT::PortsList CalculateAttackPoseAction::providedPorts()
 bool CalculateAttackPoseAction::setMessage(visualization_msgs::msg::MarkerArray & msg)
 {
   auto global_costmap = getInput<nav_msgs::msg::OccupancyGrid>("costmap_port");
-  auto tracker_target = getInput<auto_aim_interfaces::msg::Target>("tracker_port");
+  auto tracker_target = getInput<rm_interfaces::msg::Target>("tracker_port");
 
   if (!global_costmap) {
     RCLCPP_ERROR(node_->get_logger(), "Missing required input: costmap_port");
@@ -323,7 +323,7 @@ void CalculateAttackPoseAction::createVisualizationMarkers(
   msg.markers.push_back(circle);
 }
 
-}  // namespace pb2025_sentry_behavior
+}  // namespace sentry_behavior
 
 #include "behaviortree_ros2/plugins.hpp"
 CreateRosNodePlugin(sentry_behavior::CalculateAttackPoseAction, "CalculateAttackPose");
